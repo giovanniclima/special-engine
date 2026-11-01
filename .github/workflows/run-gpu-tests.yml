@@ -1,0 +1,26 @@
+name: Modal GPU Tests
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch or commit SHA to test"
+        required: false
+        default: ""
+      gpu:
+        description: "GPU type (L4, T4, A10G, A100, H100…)"
+        required: false
+        default: "L4"
+
+jobs:
+  call-modal-gpu-tests:
+    uses: ./.github/workflows/_modal-gpu-tests.yml
+    with:
+      ref: ${{ inputs.ref || github.sha }}
+      gpu: ${{ inputs.gpu || 'L4' }}
+      # python_version: "3.10"
+      # test_path: "tests/"
+      # pytest_args: "-v"
+    secrets: inherit

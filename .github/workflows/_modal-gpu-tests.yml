@@ -1,0 +1,72 @@
+name: Modal GPU Tests (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: false
+        type: string
+        default: ""
+      gpu:
+        description: "GPU type (L4, T4, A10G, A100, H100…)"
+        required: false
+        type: string
+        default: "L4"
+      python_version:
+        description: "Python version for uv setup"
+        required: false
+        type: string
+        default: "3.10"
+      test_path:
+        description: "Path passed to --test-path"
+        required: false
+        type: string
+        default: "tests/"
+      pytest_args:
+        description: "Args passed to --pytest-args"
+        required: false
+        type: string
+        default: "-v"
+    secrets:
+      MODAL_TOKEN_ID:
+        required: true
+      MODAL_TOKEN_SECRET:
+        required: true
+
+jobs:
+  gpu-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: 🐍 Install uv and set Python
+        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
+        with:
+          python-version: ${{ inputs.python_version }}
+          activate-environment: true
+
+      - name: 🚀 Install Packages
+        run: |
+          uv pip install -e . --group tests
+
+
+      - name: 🎮 Run Modal GPU tests
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+          MODAL_GPU: ${{ inputs.gpu }}
+        run: |
+          modal run .modal/test_runner.py --test-path "${{ inputs.test_path }}" --pytest-args "${{ inputs.pytest_args }}"
+
+      - name: 📤 Upload pytest output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-output
+          path: test-outputs/pytest-output.log
+          if-no-files-found: warn
+          retention-days: 30
